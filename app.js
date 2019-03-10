@@ -8,11 +8,11 @@ app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
-app.use(express.static(__dirname + '/static'))
+app.use('/static', express.static('static'))
 
 var options = {
     ///https://api.github.com/repos/:owner/:repo/issues
-    url: 'https://api.github.com/repos/mohanb95/count-github-issues/issues',
+    url: 'https://api.github.com/repos/mohanb9/count-github-issues/issues',
     headers: {
         'User-Agent': 'Github open issues',
         'Content-type': 'application/json',
@@ -27,14 +27,18 @@ var options = {
 
 function getPageCount(returnValue){
     request.get(options,function(error,response,body){
-        link_urls = response.headers.link
-        if(link_urls === undefined){
-            returnValue(1);
-        }else {
-            link_urls.split(',').forEach((api_link) => {
-                if(api_link.indexOf('rel="last"')>=0)
-                    returnValue(parseInt(api_link[api_link.indexOf('&page=')+6]));
-            })
+        if(!error && response.statusCode == 200){
+            link_urls = response.headers.link
+            if(link_urls === undefined){
+                returnValue(1);
+            }else {
+                link_urls.split(',').forEach((api_link) => {
+                    if(api_link.indexOf('rel="last"')>=0)
+                        returnValue(parseInt(api_link[api_link.indexOf('&page=')+6]));
+                })
+            }
+        } else {
+            returnValue(-1);
         }
     })
 }
@@ -50,8 +54,7 @@ var getAllOpenIssues = function(i, optionsNew, pageCount, all_open_issues, retur
                 getAllOpenIssues(i+1, optionsNew, pageCount, all_open_issues, returnOpenIssueList)
             }  
         } else {
-            console.log("Request failed with error: ", error);
-            res.send(error);
+            console.log("Request failed with error: ", JSON.parse(body));
         }
     })
 }
@@ -98,29 +101,38 @@ var removePullRequestsAndGetIssueCount = function(all_issues,returnOpenIssuesCou
 }
 
 app.post('/', function(req,res){
+    options.qs.page=1;
     var all_open_issues = [];
-    options.url = req.body.repoURL;
-    getPageCount(function(pageCount){
-        console.log("Page Count: ",pageCount);
-        getAllOpenIssues(1, options, pageCount, all_open_issues, function(all_open_issues){
-            this.all_open_issues = all_open_issues;
-            if(this.all_open_issues.length === 0){
-                var issueCount = {
-                    allOpenIssues: 0,
-                    twentyFourHourOld: 0,
-                    betweenOneAndSevenDaysOld: 0,
-                    olderThanSevenDays: 0
-                }
-                console.log(issueCount);
-                res.send(issueCount);
-            }else{
-                removePullRequestsAndGetIssueCount(this.all_open_issues,function(open_issues,issueCount){
-                    console.log(issueCount);
-                    res.send(issueCount);
-                });
+    repositoryURL = req.body.repoURL;
+    var pos = repositoryURL.indexOf("github.com")
+    if(pos >= 0){
+        apiURL = "https://api.github.com/repos"+repositoryURL.substr(pos+10)+"/issues";
+        options.url = apiURL;
+        getPageCount(function(pageCount){
+            if(pageCount > 0){
+                getAllOpenIssues(1, options, pageCount, all_open_issues, function(all_open_issues){
+                    this.all_open_issues = all_open_issues;
+                    if(this.all_open_issues.length === 0){
+                        var issueCount = {
+                            allOpenIssues: 0,
+                            twentyFourHourOld: 0,
+                            betweenOneAndSevenDaysOld: 0,
+                            olderThanSevenDays: 0
+                        }
+                        res.render('index',{issueCount:issueCount, repositoryURL: repositoryURL});
+                    }else{
+                        removePullRequestsAndGetIssueCount(this.all_open_issues,function(open_issues,issueCount){
+                            res.render('index',{issueCount:issueCount, repositoryURL: repositoryURL});
+                        });
+                    }
+                })
+            } else {
+                res.render('index',{message: "SORRY! We could not find the repository!" , repositoryURL: repositoryURL});
             }
-        })
-    });
+        });
+    }else{
+        res.render('index',{message: "OOPS! That doesn't seem to be a valid GitHub URL!", repositoryURL: repositoryURL });
+    }
 })
 
 app.get('/',function(req,res){

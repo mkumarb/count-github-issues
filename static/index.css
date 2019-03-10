@@ -1,0 +1,69 @@
+/* body{
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+} */
+
+body{
+    background: skyblue;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    color: #fff;
+}
+
+h1{
+    font-size: 35px;
+    text-transform: uppercase;
+}
+
+#gitTable {
+    border-collapse: collapse;
+    width: 75%;
+    text-align:center;
+    margin-top: 50px;
+}
+
+#gitTable td, #gitTable th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+  
+#gitTable tr:nth-child(2){
+    background-color: #f2f2f2;
+    color: #192745;
+}
+
+#gitTable tr:nth-child(2):hover{
+    background-color: #ddd;
+}
+
+#gitTable th {
+padding-top: 12px;
+padding-bottom: 12px;
+background-color: #192745; 
+/* #4CAF50; */
+color: white;
+}
+
+.gitForm{
+    width: 100%;
+    text-align:center;
+}
+
+.message{
+    font-size: 45px;
+    text-align:center;
+    font-weight: bolder;
+    text-transform: uppercase;
+    margin: 10%
+}
+
+button {
+    background-color: #4CAF50; /* Green */
+    border: none;
+    color: white;
+    padding: 0.4%;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    cursor:pointer;
+}
+

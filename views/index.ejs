@@ -5,19 +5,50 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Github Open Issues</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- <link rel="stylesheet" type="text/css" media="screen" href="main.css">
-    <script src="main.js"></script> -->
+    <link rel="stylesheet" type="text/css" href="../static/index.css">
+    <!-- <script src="main.js"></script>  -->
 </head>
 <body>
-    <h3>Enter Github repository URL to get the count of open issues</h3>
-    <form action="/" method="POST">
-        <div>
-            Enter repository URL:<br>
-            <input style="width: 35%" type="url" name="repoURL" placeholder="https://github.com/Microsoft/calculator/issues">
+    <h1 align="center">Paste Github repository URL to get the count of open issues</h1>
+    <div class="gitForm">
+        <form action="/" method="POST">
+            <div>
+                <strong>REPOSITORY URL:</strong>
+                <% if(typeof repositoryURL !== 'undefined') { %>
+                    <input style="width: 35%" type="url" name="repoURL" 
+                        placeholder="Example: https://github.com/Microsoft/calculator/issues" 
+                        value="<%= repositoryURL %>" required />
+                <% } else { %>
+                    <input style="width: 35%" type="url" name="repoURL" 
+                        placeholder="Example: https://github.com/Microsoft/calculator/issues" required />
+                <% } %>
+                <button type="Submit">Click to Get Count</button>
+            </div>
+        </form> 
+    </div>
+    <% if(typeof issueCount !== 'undefined') { %>
+        <table id="gitTable" align="center">
+            <caption style="font-size:20px;font-weight: bold">COUNT OF OPEN ISSUES</caption>
+            <tr>
+                <th></th>
+                <th scope="col">All open issues</th>
+                <th scope="col">Last 24 hours</th>
+                <th scope="col">Older than 24 hours but less than 7 days old</th>
+                <th scope="col">Older than 7 days</th>
+            </tr>
+            <tr>
+                <th scope="row">Number of open issues</th>
+                <td><%= issueCount.allOpenIssues %></td>
+                <td><%= issueCount.twentyFourHourOld %></td>
+                <td><%= issueCount.betweenOneAndSevenDaysOld %></td>
+                <td><%= issueCount.olderThanSevenDays %></td>
+            </tr>
+        </table>
+    <% } %>
+    <% if(typeof message !== 'undefined') { %>
+        <div class="message">
+            <%= message %>
         </div>
-        <div>
-            <button type="Submit">Click to Get Count</button>
-        </div>
-    </form> 
+    <% } %>
 </body>
 </html>
