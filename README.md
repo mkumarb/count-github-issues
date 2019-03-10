@@ -2,7 +2,8 @@
 
 To get the count of open issues of a repository by providing a github repository URL
 
-To view the app [click here](http://github-open-issue-count.herokuapp.com/)
+This app is built using __*NodeJS*__. To view the app [click here](http://github-open-issue-count.herokuapp.com/)
+
 
 ## Problem Statement:
 
@@ -20,10 +21,11 @@ To view the app [click here](http://github-open-issue-count.herokuapp.com/)
 * Number of open issues that were opened more than 7 days ago
 
 
+
 ## Solution:
  The solution is implemented with the help of __*GitHub REST API v3*__
 
-#### Below are the implementation steps in sequential order of execution:
+### Below are the implementation steps in sequential order of execution:
  1. Get the total number of pages of open issues to traverse through the API. A call to list GitHub's public repositories provides paginated items in sets of 30 by default. In this implementation, it is set to 100 per page which is the maximum.
  A parameter "state" is set as "open" in the request options to ensure we only get open issues.
 
@@ -37,6 +39,7 @@ To view the app [click here](http://github-open-issue-count.herokuapp.com/)
  4. The function then returns a JSON object with the result that we require which is passed on to the *ejs* template and we view the required result.
 
 
+
 ### Packages used
 * Express.js
 * body-parser
@@ -44,11 +47,14 @@ To view the app [click here](http://github-open-issue-count.herokuapp.com/)
 * ejs (Templating engine)
 
 
-#### The solution could be improved by performing the below:
+
+### The solution could be improved by performing the below:
 * Logging all the tasks and errors which will help in debugging.
 * Add a provision to give some details of the open issues
 * If required, the code can be structured by moving the logic to a separate file. 
 * Improve the validations on the URL field.
+
+
 
 
 ### To view the solution implemented follow the below steps:
