@@ -38,9 +38,9 @@ var options = {
         'Accept': 'application/vnd.github.v3+json'
     },
     qs: {
-        state: 'open',
-        per_page: 100,
-        page: 1
+        state: 'open', //parameter to get only open issues
+        per_page: 100, // parameter to get 100 issues/items per page which is maximum
+        page: 1 //initially we start with the first page for any request
     }
 };
 
@@ -73,15 +73,18 @@ function getPageCount(returnValue){
     request.get(options,function(error,response,body){
         if(!error && response.statusCode == 200){
             link_urls = response.headers.link
-            if(link_urls === undefined){
+            //if response header link is undefined, it means there's only 1 page
+            if(link_urls === undefined){ 
                 returnValue(1);
             }else {
+                //else we will have to find the page number of the last page to find the number of pages.
                 link_urls.split(',').forEach((api_link) => {
                     if(api_link.indexOf('rel="last"')>=0)
                         returnValue(parseInt(api_link[api_link.indexOf('&page=')+6]));
                 })
             }
         } else {
+            //if response is an error or status is not success (200), return -1
             returnValue(-1);
         }
     })
@@ -106,10 +109,11 @@ var getAllOpenIssues = function(i, optionsNew, pageCount, all_open_issues, retur
     optionsNew.qs.page = i;
     request.get(optionsNew,function(error,response,body){
         if(!error && response.statusCode == 200){
-            all_open_issues = [...all_open_issues,...JSON.parse(body)];
+            all_open_issues = [...all_open_issues,...JSON.parse(body)];//pushing all open issues to single array
             if(i===pageCount){
                 returnOpenIssueList(all_open_issues)
             }else{
+                //if there is more than one page, we recursively call the function for each page.
                 getAllOpenIssues(i+1, optionsNew, pageCount, all_open_issues, returnOpenIssueList)
             }  
         } else {
@@ -148,11 +152,13 @@ var removePullRequestsAndGetIssueCount = function(all_issues,returnOpenIssuesCou
     var sevenDaysOldIssues = 0, twentyFourHourOldIssues = 0;
     all_issues.forEach(issue => {
         issuesProcessed++;
+        //if the object has a key "pull_request", it means that it is not an issue, hence we eliminate it
         if(!issue.hasOwnProperty('pull_request')){
             open_issues.push(issue);
+            //date calculations based on criteria in problem statement
             var issueCreateDate = new Date(issue.created_at);
             var oneDayAgo = new Date();
-            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+            oneDayAgo.setDate(oneDayAgo.getDate() - 1); 
             var sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
             if(issueCreateDate.getTime() > oneDayAgo.getTime()){
@@ -167,6 +173,7 @@ var removePullRequestsAndGetIssueCount = function(all_issues,returnOpenIssuesCou
                     betweenOneAndSevenDaysOld: sevenDaysOldIssues - twentyFourHourOldIssues,
                     olderThanSevenDays: open_issues.length - sevenDaysOldIssues
                 }
+                // returns an object with the count of open issues and also the array containing only the open issues
                 returnOpenIssuesCount(open_issues, issueCount);
             }
         } else {
@@ -198,7 +205,7 @@ When the user clicks on the button, the form data is sent to
 the server requesting the information through the same route path "/".
 */
 app.get('/',function(req,res){
-    res.render('index')
+    res.render('index'); //renders home page with input URL field
 })
 
 /*
@@ -221,14 +228,20 @@ app.post('/', function(req,res){
     options.qs.page=1;
     var all_open_issues = [];
     repositoryURL = req.body.repoURL;
+    //simple validation of url by checking if string "github.com" is part of url.
     var pos = repositoryURL.indexOf("github.com")
     if(pos >= 0){
+        //build final url to request data from GitHub REST API v3 & update options
         apiURL = "https://api.github.com/repos"+repositoryURL.substr(pos+10)+"/issues";
         options.url = apiURL;
+        //first get page count
         getPageCount(function(pageCount){
             if(pageCount > 0){
+                //then push all open issues to one single page
                 getAllOpenIssues(1, options, pageCount, all_open_issues, function(all_open_issues){
                     this.all_open_issues = all_open_issues;
+                    //if the array returned is empty, it means there are no open issues. 
+                    //Hence, all counts will be 0 (zero).
                     if(this.all_open_issues.length === 0){
                         var issueCount = {
                             allOpenIssues: 0,
@@ -238,6 +251,8 @@ app.post('/', function(req,res){
                         }
                         res.render('index',{issueCount:issueCount, repositoryURL: repositoryURL});
                     }else{
+                        //if array is not empty, then remove pull requests from the array and 
+                        //then calculate the count based on the days that is specified in problem statement
                         removePullRequestsAndGetIssueCount(this.all_open_issues,function(open_issues,issueCount){
                             res.render('index',{issueCount:issueCount, repositoryURL: repositoryURL});
                         });
@@ -251,6 +266,11 @@ app.post('/', function(req,res){
         res.render('index',{message: "OOPS! That doesn't seem to be a valid GitHub URL!", repositoryURL: repositoryURL });
     }
 })
+
+// Default route. When the user navigates to any other URL other than "/", we display the error page
+app.get("*",function(req, res) {            
+    res.render("page_not_found");
+});
 
 // When app is run locally, the server listens to port 3000. But HEROKU, 
 // requires process.env.PORT to be able to host on their server.

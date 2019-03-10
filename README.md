@@ -48,6 +48,7 @@ To view the app [click here](http://github-open-issue-count.herokuapp.com/)
 * Logging all the tasks and errors which will help in debugging.
 * Add a provision to give some details of the open issues
 * If required, the code can be structured by moving the logic to a separate file. 
+* Improve the validations on the URL field.
 
 
 ### To view the solution implemented follow the below steps:
