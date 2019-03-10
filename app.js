@@ -1,17 +1,36 @@
+/*
+############IMPORTING PACKAGES###########
+1. express: helps with the routing functionalities
+2. request: To request urls to get the data from the corresponding url
+3. body-parser: To help us get form data (in this app to get the URL entered by user)
+*/
 var express     = require('express'),
     request     = require('request'),
     bodyParser  = require("body-parser");
 
 app = express();
 
+// We are setting the template engine as ejs to render html content
 app.set('view engine', 'ejs');
 
+//Enabling middlewares to get form data through request body
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
+
+//Enabling middleware to serve static content like css & js from /static folder
 app.use('/static', express.static('static'))
 
+/*
+We are setting the default options to request data from github api.
+Github API sends 30 items/JSON objects per page by default. We can
+increase this to a maximum of 100. Hence, we have set per_page as 
+100 & then we continue traversing pages based on existence.
+We have also passed the parameter, "state" as "open" to list only open issues
+*/
 var options = {
-    ///https://api.github.com/repos/:owner/:repo/issues
+    /*GitHub API URL syntax to get details of all issues of a repository:
+      https://api.github.com/repos/:owner/:repo/issues
+      We will change the URL based on user input.*/
     url: 'https://api.github.com/repos/mohanb9/count-github-issues/issues',
     headers: {
         'User-Agent': 'Github open issues',
@@ -25,6 +44,31 @@ var options = {
     }
 };
 
+
+/*
+###############################################################
+Below are the supporting functions which will be used when a 
+user provides a URL to get the desired information
+###############################################################
+*/
+
+/*
+FUNCTION: getPageCount
+^^^^^^^^^^^^^^^^^^^^^^
+This function returns the number of pages containing open issues
+that are present with each page containing 100 issues.
+Ex: If there are 130 open issues, the function returns 2.
+
+Implementation:
+^^^^^^^^^^^^^^
+If there is more than one page, we get the url for the last page along with 
+page number for the last page as a parameter in the url through the response header link.
+If there is only a single page, then the response header link will be undefined.
+Ex: When there is more than one page, we get the response header link as below:
+<https://api.github.com/resource?page=2>; rel="next",
+      <https://api.github.com/resource?page=5>; rel="last"
+The below code tries to get the value "5" for the last page
+*/
 function getPageCount(returnValue){
     request.get(options,function(error,response,body){
         if(!error && response.statusCode == 200){
@@ -43,6 +87,21 @@ function getPageCount(returnValue){
     })
 }
 
+/*
+FUNCTION: getAllOpenIssues
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+This function returns a single array containing details of all 
+the open issues (each issue as a JSON object) that are obtained 
+from multiple pages.
+The idea is, once we have all the required information in a single 
+array, it will be much easier to get the required information.
+
+Implementation:
+^^^^^^^^^^^^^^
+Once we identify the number of pages using function "getPageCount", 
+this function recursively requests for each page and pushes all the
+issues (JSON object) to a single array which is returned through a callback.
+*/
 var getAllOpenIssues = function(i, optionsNew, pageCount, all_open_issues, returnOpenIssueList) {
     optionsNew.qs.page = i;
     request.get(optionsNew,function(error,response,body){
@@ -59,6 +118,30 @@ var getAllOpenIssues = function(i, optionsNew, pageCount, all_open_issues, retur
     })
 }
 
+
+/*
+FUNCTION: removePullRequestsAndGetIssueCount
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GitHub's REST API v3 considers ****every pull request as an issue****, 
+but not every issue is a pull request. For this reason, "Issues" 
+endpoints may return both issues and pull requests in the response. 
+We can identify pull requests by the pull_request key.
+
+This function ensures that we eliminate all the pull requests from
+the array obtained from function "getAllOpenIssues" & also calculate
+the count of open issues based on given criteria in the problem statement.
+Finally it returns an object with the count of open issues for each criteria
+in the problem statement.
+
+Implementation:
+^^^^^^^^^^^^^^
+Once we get the entire array containing open issues (which include 
+pull requests too) using function "getAllOpenIssues", this function 
+loops through each issue to eliminate every JSON object that has the 
+key "pull_request" (since these are pull requests and not open issues).
+While performing this check, we also calculate the count of open issues
+based on given criteria in problem statement.
+*/
 var removePullRequestsAndGetIssueCount = function(all_issues,returnOpenIssuesCount){
     issuesProcessed = 0;
     var open_issues = [];
@@ -100,6 +183,40 @@ var removePullRequestsAndGetIssueCount = function(all_issues,returnOpenIssuesCou
     })
 }
 
+/*
+###############################################################
+##############   END OF SUPPORTING FUNCTIONS  #################
+###############################################################
+*/
+
+/*
+#################### BEGIN ROUTES #######################
+When the user requests for home page (path: "/"), we render 
+the index.ejs file which contains the form field to enter 
+github repository URL.
+When the user clicks on the button, the form data is sent to 
+the server requesting the information through the same route path "/".
+*/
+app.get('/',function(req,res){
+    res.render('index')
+})
+
+/*
+Once the user submits the form, a POST request is sent which is 
+handled by this route. We first form the GitHub API URL from 
+the URL shared by the user.
+The URL is validated and then the above supporting functions 
+are called synchronously to serve their functionality. 
+This is achieved through callbacks.
+####Summarising the flow of code: 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1. Get the total number of pages to traverse through the API
+2. Get all open issues into one single array
+3. From this array, eliminate all the pull requests, which are
+   considered as issues by the API and also calculate the number
+   of open issues based on the criteria.
+4. The function then returns a JSON object with the result that we require.
+*/
 app.post('/', function(req,res){
     options.qs.page=1;
     var all_open_issues = [];
@@ -135,10 +252,8 @@ app.post('/', function(req,res){
     }
 })
 
-app.get('/',function(req,res){
-    res.render('index')
-})
-
+// When app is run locally, the server listens to port 3000. But HEROKU, 
+// requires process.env.PORT to be able to host on their server.
 app.listen(process.env.PORT || 3000, function(){
     console.log("Server has started!!");
 });
