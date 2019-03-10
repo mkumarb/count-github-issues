@@ -1,0 +1,30 @@
+{
+  "name": "github-issue-count",
+  "version": "1.0.0",
+  "description": "Count number of open github issues",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohanb95/count-github-issues.git"
+  },
+  "keywords": [
+    "open-issues",
+    "github",
+    "repo"
+  ],
+  "author": "Mohan Kumar B",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mohanb95/count-github-issues/issues"
+  },
+  "homepage": "https://github.com/mohanb95/count-github-issues#readme",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "ejs": "^2.6.1",
+    "express": "^4.16.4",
+    "request": "^2.88.0"
+  }
+}
