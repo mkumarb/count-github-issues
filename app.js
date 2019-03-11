@@ -6,7 +6,8 @@
 */
 var express     = require('express'),
     request     = require('request'),
-    bodyParser  = require("body-parser");
+    bodyParser  = require("body-parser"),
+    async       = require('async');
 
 app = express();
 
@@ -31,7 +32,7 @@ var options = {
     /*GitHub API URL syntax to get details of all issues of a repository:
       https://api.github.com/repos/:owner/:repo/issues
       We will change the URL based on user input.*/
-    url: 'https://api.github.com/repos/mohanb9/count-github-issues/issues',
+    url: 'https://api.github.com/repos/mohanb95/count-github-issues/issues',
     headers: {
         'User-Agent': 'Github open issues',
         'Content-type': 'application/json',
@@ -41,6 +42,10 @@ var options = {
         state: 'open', //parameter to get only open issues
         per_page: 100, // parameter to get 100 issues/items per page which is maximum
         page: 1 //initially we start with the first page for any request
+    },
+    'auth': {
+        'user': 'mohanb95',
+        'bearer': '9c0821fb11aaf446283d99767a5e0f70bf4e3cbf'
     }
 };
 
@@ -79,8 +84,11 @@ function getPageCount(returnValue){
             }else {
                 //else we will have to find the page number of the last page to find the number of pages.
                 link_urls.split(',').forEach((api_link) => {
-                    if(api_link.indexOf('rel="last"')>=0)
-                        returnValue(parseInt(api_link[api_link.indexOf('&page=')+6]));
+                    if(api_link.indexOf('rel="last"')>=0){
+                        startPos=api_link.indexOf('&page=')+6;
+                        endPos=api_link.indexOf(('>; rel="last"'));
+                        returnValue(parseInt(api_link.slice(startPos, endPos)));
+                    }
                 })
             }
         } else {
@@ -89,6 +97,7 @@ function getPageCount(returnValue){
         }
     })
 }
+
 
 /*
 FUNCTION: getAllOpenIssues
@@ -102,25 +111,57 @@ array, it will be much easier to get the required information.
 Implementation:
 ^^^^^^^^^^^^^^
 Once we identify the number of pages using function "getPageCount", 
-this function recursively requests for each page and pushes all the
-issues (JSON object) to a single array which is returned through a callback.
+this function creates an array with options containing all the page numbers.
+You can observe that th parameter "page" is dynamic (value of i which is incremented).
+Once we get all the options, we request the pages concurrently using async and we then 
+push all the objects to a single array which is returned through a callback.
 */
-var getAllOpenIssues = function(i, optionsNew, pageCount, all_open_issues, returnOpenIssueList) {
-    optionsNew.qs.page = i;
-    request.get(optionsNew,function(error,response,body){
-        if(!error && response.statusCode == 200){
-            all_open_issues = [...all_open_issues,...JSON.parse(body)];//pushing all open issues to single array
-            if(i===pageCount){
-                returnOpenIssueList(all_open_issues)
-            }else{
-                //if there is more than one page, we recursively call the function for each page.
-                getAllOpenIssues(i+1, optionsNew, pageCount, all_open_issues, returnOpenIssueList)
-            }  
-        } else {
-            console.log("Request failed with error: ", JSON.parse(body));
+var all_options = [];
+getAllOpenIssues = function(i, apiURL, pageCount, all_open_issues, returnOpenIssueList) {
+    var opt = {
+        url: apiURL,
+        headers: {
+            'User-Agent': 'Github open issues',
+            'Content-type': 'application/json',
+            'Accept': 'application/vnd.github.v3+json'
+        },
+        qs: {
+            state: 'open', //parameter to get only open issues
+            per_page: 100, // parameter to get 100 issues/items per page which is maximum
+            page: i //initially we start with the first page for any request
+        },
+        'auth': {
+            'user': 'mohanb95',
+            'bearer': '9c0821fb11aaf446283d99767a5e0f70bf4e3cbf'
         }
-    })
+    }
+    all_options.push(opt);//each push constains options/parameters for new page.
+    if(i===pageCount)
+    {
+        totalCount=0;
+        async.map(all_options, function(opts) { //we use async.map to achieve concurrency of requests
+            request(opts, function(error, response, body) {
+                if(!error && response.statusCode == 200){
+                    all_open_issues = [...all_open_issues,...JSON.parse(body)];//pushing all open issues to single array
+                    totalCount++;
+                    if(totalCount===pageCount){
+                        //Once all requests are processed, we return the array with all the open issues.
+                        console.log("Pages completed: ",totalCount," with count: ",all_open_issues.length)
+                        returnOpenIssueList(all_open_issues)
+                    } 
+                } else {
+                    console.log("Request failed with error: ", JSON.parse(body));
+                }
+                // callback(error, html);
+            });
+            }, function(err, results) {
+             console.log(results);
+        });
+    } else {
+        getAllOpenIssues(i+1, apiURL, pageCount, all_open_issues, returnOpenIssueList)
+    }
 }
+
 
 
 /*
@@ -227,6 +268,7 @@ This is achieved through callbacks.
 app.post('/', function(req,res){
     options.qs.page=1;
     var all_open_issues = [];
+    all_options=[];
     repositoryURL = req.body.repoURL;
     //simple validation of url by checking if string "github.com" is part of url.
     var pos = repositoryURL.indexOf("github.com")
@@ -236,9 +278,10 @@ app.post('/', function(req,res){
         options.url = apiURL;
         //first get page count
         getPageCount(function(pageCount){
+            console.log("Page Count: ",pageCount);
             if(pageCount > 0){
                 //then push all open issues to one single page
-                getAllOpenIssues(1, options, pageCount, all_open_issues, function(all_open_issues){
+                getAllOpenIssues(1, apiURL, pageCount, all_open_issues, function(all_open_issues){
                     this.all_open_issues = all_open_issues;
                     //if the array returned is empty, it means there are no open issues. 
                     //Hence, all counts will be 0 (zero).
@@ -249,11 +292,13 @@ app.post('/', function(req,res){
                             betweenOneAndSevenDaysOld: 0,
                             olderThanSevenDays: 0
                         }
+                        console.log("Done!");
                         res.render('index',{issueCount:issueCount, repositoryURL: repositoryURL});
                     }else{
                         //if array is not empty, then remove pull requests from the array and 
                         //then calculate the count based on the days that is specified in problem statement
                         removePullRequestsAndGetIssueCount(this.all_open_issues,function(open_issues,issueCount){
+                            console.log("Done!");
                             res.render('index',{issueCount:issueCount, repositoryURL: repositoryURL});
                         });
                     }
@@ -274,6 +319,6 @@ app.get("*",function(req, res) {
 
 // When app is run locally, the server listens to port 3000. But HEROKU, 
 // requires process.env.PORT to be able to host on their server.
-app.listen(process.env.PORT || 3000, function(){
+app.listen(process.env.PORT || 3004, function(){
     console.log("Server has started!!");
 });
