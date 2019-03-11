@@ -44,8 +44,8 @@ var options = {
         page: 1 //initially we start with the first page for any request
     },
     'auth': {
-        'user': 'mohanb95',
-        'bearer': '9c0821fb11aaf446283d99767a5e0f70bf4e3cbf'
+        'user': 'USERNAME_GOES_HERE', //replace yuor username
+        'bearer': 'API_TOKEN_GOES_HERE' //replace this with the access token
     }
 };
 
@@ -131,8 +131,8 @@ getAllOpenIssues = function(i, apiURL, pageCount, all_open_issues, returnOpenIss
             page: i //initially we start with the first page for any request
         },
         'auth': {
-            'user': 'mohanb95',
-            'bearer': '9c0821fb11aaf446283d99767a5e0f70bf4e3cbf'
+            'user': 'USERNAME_GOES_HERE', //replace yuor username
+            'bearer': 'API_TOKEN_GOES_HERE' //replace this with the access token
         }
     }
     all_options.push(opt);//each push constains options/parameters for new page.
